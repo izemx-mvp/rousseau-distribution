@@ -514,7 +514,7 @@ function FloatingField({
   value: string;
   onChange: (v: string) => void;
   onBlur: () => void;
-  error?: string;
+  error?: string | undefined;
   type?: string;
   required?: boolean;
 }) {
@@ -573,7 +573,7 @@ function FloatingTextarea({
   value: string;
   onChange: (v: string) => void;
   onBlur: () => void;
-  error?: string;
+  error?: string | undefined;
   rows?: number;
   required?: boolean;
 }) {
