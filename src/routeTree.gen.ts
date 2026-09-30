@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AProposRouteImport } from './routes/a-propos'
+import { Route as ContactRouteImport } from './routes/contact'
 import { Route as SecteursRouteImport } from './routes/secteurs'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as CatalogueIndexRouteImport } from './routes/catalogue.index'
 import { Route as CatalogueReferenceRouteImport } from './routes/catalogue.$reference'
 import { Route as ApiPublicChatRouteImport } from './routes/api/public/chat'
+import { Route as BlogCategorieCategoryRouteImport } from './routes/blog.categorie.$category'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -26,9 +29,19 @@ const AProposRoute = AProposRouteImport.update({
   path: '/a-propos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SecteursRoute = SecteursRouteImport.update({
   id: '/secteurs',
   path: '/secteurs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogueIndexRoute = CatalogueIndexRouteImport.update({
@@ -46,66 +59,92 @@ const ApiPublicChatRoute = ApiPublicChatRouteImport.update({
   path: '/api/public/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogCategorieCategoryRoute = BlogCategorieCategoryRouteImport.update({
+  id: '/blog/categorie/$category',
+  path: '/blog/categorie/$category',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/contact': typeof ContactRoute
   '/secteurs': typeof SecteursRoute
   '/catalogue/$reference': typeof CatalogueReferenceRoute
+  '/blog/': typeof BlogIndexRoute
   '/catalogue/': typeof CatalogueIndexRoute
   '/api/public/chat': typeof ApiPublicChatRoute
+  '/blog/categorie/$category': typeof BlogCategorieCategoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/contact': typeof ContactRoute
   '/secteurs': typeof SecteursRoute
   '/catalogue/$reference': typeof CatalogueReferenceRoute
+  '/blog': typeof BlogIndexRoute
   '/catalogue': typeof CatalogueIndexRoute
   '/api/public/chat': typeof ApiPublicChatRoute
+  '/blog/categorie/$category': typeof BlogCategorieCategoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/a-propos': typeof AProposRoute
+  '/contact': typeof ContactRoute
   '/secteurs': typeof SecteursRoute
   '/catalogue/$reference': typeof CatalogueReferenceRoute
+  '/blog/': typeof BlogIndexRoute
   '/catalogue/': typeof CatalogueIndexRoute
   '/api/public/chat': typeof ApiPublicChatRoute
+  '/blog/categorie/$category': typeof BlogCategorieCategoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/a-propos'
+    | '/contact'
     | '/secteurs'
     | '/catalogue/$reference'
+    | '/blog/'
     | '/catalogue/'
     | '/api/public/chat'
+    | '/blog/categorie/$category'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/a-propos'
+    | '/contact'
     | '/secteurs'
     | '/catalogue/$reference'
+    | '/blog'
     | '/catalogue'
     | '/api/public/chat'
+    | '/blog/categorie/$category'
   id:
     | '__root__'
     | '/'
     | '/a-propos'
+    | '/contact'
     | '/secteurs'
     | '/catalogue/$reference'
+    | '/blog/'
     | '/catalogue/'
     | '/api/public/chat'
+    | '/blog/categorie/$category'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AProposRoute: typeof AProposRoute
+  ContactRoute: typeof ContactRoute
   SecteursRoute: typeof SecteursRoute
   CatalogueReferenceRoute: typeof CatalogueReferenceRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   CatalogueIndexRoute: typeof CatalogueIndexRoute
   ApiPublicChatRoute: typeof ApiPublicChatRoute
+  BlogCategorieCategoryRoute: typeof BlogCategorieCategoryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -124,11 +163,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AProposRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/secteurs': {
       id: '/secteurs'
       path: '/secteurs'
       fullPath: '/secteurs'
       preLoaderRoute: typeof SecteursRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalogue/': {
@@ -152,16 +205,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/categorie/$category': {
+      id: '/blog/categorie/$category'
+      path: '/blog/categorie/$category'
+      fullPath: '/blog/categorie/$category'
+      preLoaderRoute: typeof BlogCategorieCategoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AProposRoute: AProposRoute,
+  ContactRoute: ContactRoute,
   SecteursRoute: SecteursRoute,
   CatalogueReferenceRoute: CatalogueReferenceRoute,
+  BlogIndexRoute: BlogIndexRoute,
   CatalogueIndexRoute: CatalogueIndexRoute,
   ApiPublicChatRoute: ApiPublicChatRoute,
+  BlogCategorieCategoryRoute: BlogCategorieCategoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
