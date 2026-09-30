@@ -60,7 +60,7 @@ function SecteursPage() {
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
         if (visible?.target instanceof HTMLElement) {
-          setActive(visible.target.dataset.sectorId ?? active);
+          setActive(visible.target.dataset["sectorId"] ?? active);
         }
       },
       { rootMargin: "-30% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
@@ -109,7 +109,7 @@ function SecteursPage() {
 
           <div className="flex-1">
             {sectors.map((sector, i) => {
-              const Illu = sectorIllustrations[i % sectorIllustrations.length];
+              const Illu = sectorIllustrations[i % sectorIllustrations.length]!;
               const fromLeft = i % 2 === 0;
               return (
                 <SectorSection
