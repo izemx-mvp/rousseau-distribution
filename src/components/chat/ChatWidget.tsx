@@ -1,13 +1,29 @@
 import { Link } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, MessageSquare, Minus, Plus, RotateCcw, Send, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  ArrowRight,
+  Check,
+  FileText,
+  Headphones,
+  Layers,
+  MessageCircle,
+  Minus,
+  Plus,
+  RotateCcw,
+  Search,
+  Send,
+  X,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
-import { LogoMark } from "@/components/brand/Logo";
 import { whatsappLink } from "@/config/site";
+import { getProduct } from "@/data/products";
+import { getPostImage } from "@/lib/post-image";
+import { getProductImage } from "@/lib/product-image";
 import { useQuote } from "@/lib/quote-store";
 import { cn } from "@/lib/utils";
+import avatar from "@/assets/chatbot-avatar.png";
 
 interface ProductCardData {
   reference: string;
@@ -35,15 +51,142 @@ const WELCOME: ChatMessage = {
   content:
     "Bonjour, je suis l'assistant de Rousseau Distribution. Dites-moi quelle pièce vous recherchez et je vous oriente vers la bonne référence.",
 };
-const QUICK_REPLIES = [
-  "Je cherche une pièce",
-  "Demander un devis",
-  "Quelles familles de produits ?",
-  "Parler à un commercial",
+const QUICK_REPLIES: { label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { label: "Je cherche une pièce", icon: Search },
+  { label: "Demander un devis", icon: FileText },
+  { label: "Quelles familles de produits ?", icon: Layers },
+  { label: "Parler à un commercial", icon: Headphones },
 ];
 
 function newId() {
   return Math.random().toString(36).slice(2);
+}
+
+/** Carries the HTTP status of a failed chat request so the UI can pick the right message. */
+class ChatHttpError extends Error {
+  status: number;
+  constructor(status: number) {
+    super(`chat request failed with status ${status}`);
+    this.status = status;
+  }
+}
+
+/** Round avatar used in the launcher, header, tooltip and assistant messages. */
+function Avatar({ className }: { className?: string }) {
+  return (
+    <img
+      src={avatar}
+      alt=""
+      decoding="async"
+      className={cn("shrink-0 rounded-full bg-navy object-cover", className)}
+      aria-hidden
+    />
+  );
+}
+
+function ProductBubble({
+  product,
+  onAdd,
+  added,
+  onNavigate,
+}: {
+  product: ProductCardData;
+  onAdd: () => void;
+  added: boolean;
+  onNavigate: () => void;
+}) {
+  const full = getProduct(product.reference);
+  const img = full ? getProductImage(full) : null;
+
+  return (
+    <div className="flex gap-3 rounded-xl border border-border bg-background p-2.5 text-left shadow-sm">
+      {img && (
+        <span
+          className={cn(
+            "size-16 shrink-0 overflow-hidden rounded-lg",
+            img.specific ? "bg-surface" : "bg-navy-deep",
+          )}
+        >
+          <img
+            src={img.src}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className={cn("size-full", img.specific ? "object-contain p-1" : "object-cover")}
+          />
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <span className="mono-ref font-bold text-rouge">{product.reference}</span>
+        <p className="mt-0.5 line-clamp-2 text-xs leading-snug font-semibold text-navy">
+          {product.designation}
+        </p>
+        <p className="text-[11px] text-muted-foreground">{product.brand}</p>
+        <div className="mt-2 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onAdd}
+            className={cn(
+              "focus-rd inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-[11px] font-bold transition-colors duration-300",
+              added ? "bg-navy text-white" : "bg-rouge text-white hover:bg-rouge/90",
+            )}
+          >
+            {added ? (
+              <>
+                <Check className="size-3" /> Ajouté
+              </>
+            ) : (
+              "Ajouter au devis"
+            )}
+          </button>
+          <Link
+            to="/catalogue/$reference"
+            params={{ reference: encodeURIComponent(product.reference) }}
+            onClick={onNavigate}
+            className="focus-rd text-[11px] font-bold text-navy hover:text-rouge"
+          >
+            Voir
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticleBubble({ article, onNavigate }: { article: PostCardData; onNavigate: () => void }) {
+  const image = getPostImage({ slug: article.slug, title: article.title });
+
+  return (
+    <Link
+      to="/blog/$slug"
+      params={{ slug: article.slug }}
+      onClick={onNavigate}
+      className="group focus-rd flex overflow-hidden rounded-xl border border-border bg-background text-left shadow-sm transition-colors duration-300 hover:border-rouge/40"
+    >
+      {image && (
+        <span className="relative w-20 shrink-0 overflow-hidden">
+          <img
+            src={image}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        </span>
+      )}
+      <span className="min-w-0 flex-1 p-3">
+        <span className="block text-[11px] font-bold tracking-wide text-rouge uppercase">
+          Article
+        </span>
+        <span className="mt-1 line-clamp-2 block text-xs leading-snug font-semibold text-navy">
+          {article.title}
+        </span>
+        <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-navy group-hover:text-rouge">
+          Lire <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+        </span>
+      </span>
+    </Link>
+  );
 }
 
 export function ChatWidget() {
@@ -56,7 +199,9 @@ export function ChatWidget() {
   const [streaming, setStreaming] = useState(false);
   const [sessionId] = useState(() => newId());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const lastSent = useRef(0);
+  const reduced = useReducedMotion();
   const { add, has } = useQuote();
 
   useEffect(() => {
@@ -88,6 +233,23 @@ export function ChatWidget() {
     const t = setTimeout(() => setTooltip(true), 6000);
     return () => clearTimeout(t);
   }, [mounted, open]);
+
+  // Escape closes the panel; the input takes focus when the panel opens (desktop only).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    if (window.matchMedia("(min-width: 640px)").matches) {
+      const t = setTimeout(() => inputRef.current?.focus(), 350);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener("keydown", onKey);
+      };
+    }
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, minimised]);
 
   const dismissTip = () => {
     setTooltip(false);
@@ -124,7 +286,11 @@ export function ChatWidget() {
               .map((m) => ({ role: m.role, content: m.content })),
           }),
         });
-        if (!res.ok || !res.body) throw new Error("network");
+        if (!res.ok || !res.body) {
+          const detail = await res.text().catch(() => "");
+          console.error("[chat] request failed:", res.status, res.statusText, detail);
+          throw new ChatHttpError(res.status);
+        }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -176,17 +342,17 @@ export function ChatWidget() {
                   "Je ne parviens pas à répondre pour le moment. Vous pouvez nous écrire via le formulaire de devis ou WhatsApp.",
               },
         );
-      } catch {
+      } catch (err) {
+        console.error("[chat] error:", err);
+        const status = err instanceof ChatHttpError ? err.status : 0;
+        const content =
+          status === 429
+            ? "Beaucoup de demandes en ce moment. Réessayez dans un instant, ou passez par le formulaire de devis."
+            : status === 402 || status === 503
+              ? "L'assistant est momentanément indisponible. Vous pouvez nous écrire via le formulaire de devis ou WhatsApp."
+              : "La connexion a échoué. Vous pouvez nous écrire via le formulaire de devis ou WhatsApp.";
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content:
-                    "La connexion a échoué. Vous pouvez nous écrire via le formulaire de devis ou WhatsApp.",
-                }
-              : m,
-          ),
+          prev.map((m) => (m.id === assistantId ? { ...m, content } : m)),
         );
       } finally {
         setStreaming(false);
@@ -197,13 +363,16 @@ export function ChatWidget() {
 
   if (!mounted) return null;
 
+  const lastId = messages[messages.length - 1]?.id;
+  const showWelcomeGrid = messages.length <= 1;
+
   return (
     <>
       {/* Launcher */}
       <AnimatePresence>
         {!open && (
           <motion.div
-            className="fixed right-5 bottom-5 z-40 flex flex-col items-end gap-3"
+            className="fixed right-4 bottom-4 z-40 flex flex-col items-end gap-3 md:right-5 md:bottom-5"
             initial={{ scale: 0.7, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.7, opacity: 0 }}
@@ -214,20 +383,22 @@ export function ChatWidget() {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}
-                  className="flex max-w-[15rem] items-start gap-2 rounded-xl border border-border bg-background px-4 py-3 text-sm font-semibold text-navy shadow-lift"
+                  className="relative flex max-w-[16rem] items-start gap-2.5 rounded-2xl rounded-br-md border border-border bg-background py-3 pr-2 pl-3 text-sm font-semibold text-navy shadow-lift"
                 >
-                  <span>Une pièce à trouver ? Je vous aide.</span>
+                  <Avatar className="size-7" />
+                  <span className="pt-0.5 leading-snug">Une pièce à trouver ? Je vous aide.</span>
                   <button
                     type="button"
                     onClick={dismissTip}
                     aria-label="Fermer l'info-bulle"
-                    className="focus-rd -mt-1 -mr-1 rounded p-1 text-muted-foreground"
+                    className="focus-rd rounded p-1 text-muted-foreground hover:text-navy"
                   >
                     <X className="size-3.5" />
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
+
             <button
               type="button"
               onClick={() => {
@@ -236,10 +407,17 @@ export function ChatWidget() {
                 dismissTip();
               }}
               aria-label="Ouvrir l'assistant Rousseau"
-              className="focus-rd relative flex size-14 items-center justify-center rounded-full bg-navy shadow-lift transition-transform duration-300 hover:scale-105 md:size-16"
+              className="group focus-rd relative flex size-16 items-center justify-center rounded-full bg-navy shadow-lift ring-2 ring-white transition-transform duration-300 hover:scale-105"
             >
-              <MessageSquare className="size-6 text-white md:size-7" />
-              <span className="absolute top-2.5 right-2.5 size-2.5 rounded-full bg-rouge" />
+              {!reduced && (
+                <span
+                  className="absolute inset-0 animate-ping rounded-full border-2 border-rouge/40"
+                  style={{ animationDuration: "3.2s" }}
+                  aria-hidden
+                />
+              )}
+              <Avatar className="size-full" />
+              <span className="absolute top-0 right-0 size-3.5 rounded-full border-2 border-white bg-rouge" />
             </button>
           </motion.div>
         )}
@@ -262,20 +440,25 @@ export function ChatWidget() {
               minimised && "sm:h-auto",
             )}
           >
-            <div className="glass-navy flex items-center gap-3 border-b border-white/10 px-4 py-3.5">
-              <LogoMark />
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-sm font-bold text-white">
-                  Assistant Rousseau
-                  <span className="size-2 rounded-full bg-emerald-400" aria-hidden />
-                </p>
-                <p className="text-xs text-white/60">Réponse en quelques secondes</p>
+            {/* Header */}
+            <div className="glass-navy relative flex items-center gap-3 overflow-hidden border-b border-white/10 px-4 py-3.5">
+              <div className="blueprint pointer-events-none absolute inset-0 opacity-50" aria-hidden />
+              <span className="relative">
+                <Avatar className="size-10 ring-2 ring-white/20" />
+                <span
+                  className="absolute -right-0.5 -bottom-0.5 size-3 rounded-full border-2 border-navy bg-emerald-400"
+                  aria-hidden
+                />
+              </span>
+              <div className="relative min-w-0 flex-1">
+                <p className="text-sm font-bold text-white">Assistant Rousseau</p>
+                <p className="text-xs text-white/60">En ligne, réponse en quelques secondes</p>
               </div>
               <button
                 type="button"
                 onClick={() => setMinimised((v) => !v)}
                 aria-label={minimised ? "Agrandir" : "Réduire"}
-                className="focus-rd hidden rounded p-1.5 text-white/70 hover:text-white sm:block"
+                className="focus-rd relative hidden rounded p-1.5 text-white/70 hover:text-white sm:block"
               >
                 {minimised ? <Plus className="size-4" /> : <Minus className="size-4" />}
               </button>
@@ -283,36 +466,52 @@ export function ChatWidget() {
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Fermer l'assistant"
-                className="focus-rd rounded p-1.5 text-white/70 hover:text-white"
+                className="focus-rd relative rounded p-1.5 text-white/70 hover:text-white"
               >
                 <X className="size-4" />
               </button>
+              <span className="absolute inset-x-0 bottom-0 h-[2px] bg-rouge" aria-hidden />
             </div>
 
             {!minimised && (
               <>
-                <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto bg-surface px-4 py-5">
+                <div
+                  ref={scrollRef}
+                  className="flex-1 space-y-4 overflow-y-auto bg-surface px-4 py-5"
+                  aria-live="polite"
+                >
                   {messages.map((m) => (
                     <motion.div
                       key={m.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={cn("flex gap-2", m.role === "user" && "justify-end")}
+                      className={cn("flex items-end gap-2", m.role === "user" && "justify-end")}
                     >
-                      {m.role === "assistant" && <LogoMark className="size-7" />}
-                      <div className={cn("max-w-[82%] space-y-2", m.role === "user" && "text-right")}>
+                      {m.role === "assistant" && <Avatar className="size-7" />}
+                      <div
+                        className={cn(
+                          "max-w-[84%] min-w-0 space-y-2",
+                          m.role === "user" && "text-right",
+                        )}
+                      >
                         {(m.content || m.role === "user") && (
                           <div
                             className={cn(
-                              "rounded-xl px-3.5 py-2.5 text-sm leading-relaxed",
+                              "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
                               m.role === "user"
-                                ? "bg-navy text-left text-white"
-                                : "border border-border bg-background text-slate-ink",
+                                ? "rounded-br-md bg-navy text-left text-white"
+                                : "rounded-bl-md border border-border bg-background text-slate-ink",
                             )}
                           >
                             {m.role === "assistant" ? (
                               <div className="prose-chat space-y-2 [&_a]:text-rouge [&_a]:underline [&_code]:font-mono [&_code]:text-navy [&_li]:ml-4 [&_li]:list-disc [&_strong]:text-navy">
                                 <ReactMarkdown>{m.content}</ReactMarkdown>
+                                {streaming && m.id === lastId && (
+                                  <span
+                                    className="ml-0.5 inline-block h-3.5 w-[2px] animate-pulse bg-rouge align-middle"
+                                    aria-hidden
+                                  />
+                                )}
                               </div>
                             ) : (
                               m.content
@@ -323,38 +522,18 @@ export function ChatWidget() {
                         {m.products && m.products.length > 0 && (
                           <div className="space-y-2">
                             {m.products.map((p) => (
-                              <div
+                              <ProductBubble
                                 key={p.reference}
-                                className="rounded-lg border border-border bg-background p-3 text-left"
-                              >
-                                <span className="mono-ref font-bold text-rouge">{p.reference}</span>
-                                <p className="mt-0.5 text-xs font-semibold text-navy">
-                                  {p.designation}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground">{p.brand}</p>
-                                <div className="mt-2.5 flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      add(p);
-                                      toast.success("Ajouté à votre demande de devis", {
-                                        description: p.reference,
-                                      });
-                                    }}
-                                    className="focus-rd rounded-md bg-rouge px-2.5 py-1.5 text-[11px] font-bold text-white"
-                                  >
-                                    {has(p.reference) ? "Ajouté" : "Ajouter au devis"}
-                                  </button>
-                                  <Link
-                                    to="/catalogue/$reference"
-                                    params={{ reference: encodeURIComponent(p.reference) }}
-                                    onClick={() => setOpen(false)}
-                                    className="focus-rd text-[11px] font-bold text-navy"
-                                  >
-                                    Voir
-                                  </Link>
-                                </div>
-                              </div>
+                                product={p}
+                                added={has(p.reference)}
+                                onAdd={() => {
+                                  add(p);
+                                  toast.success("Ajouté à votre demande de devis", {
+                                    description: p.reference,
+                                  });
+                                }}
+                                onNavigate={() => setOpen(false)}
+                              />
                             ))}
                           </div>
                         )}
@@ -362,23 +541,11 @@ export function ChatWidget() {
                         {m.articles && m.articles.length > 0 && (
                           <div className="space-y-2">
                             {m.articles.map((a) => (
-                              <div
+                              <ArticleBubble
                                 key={a.slug}
-                                className="rounded-lg border border-border bg-background p-3 text-left"
-                              >
-                                <p className="text-[11px] font-bold tracking-wide text-rouge uppercase">
-                                  Article
-                                </p>
-                                <p className="mt-1 text-xs font-semibold text-navy">{a.title}</p>
-                                <Link
-                                  to="/blog/$slug"
-                                  params={{ slug: a.slug }}
-                                  onClick={() => setOpen(false)}
-                                  className="focus-rd mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-navy"
-                                >
-                                  Lire <ArrowRight className="size-3" />
-                                </Link>
-                              </div>
+                                article={a}
+                                onNavigate={() => setOpen(false)}
+                              />
                             ))}
                           </div>
                         )}
@@ -386,28 +553,39 @@ export function ChatWidget() {
                     </motion.div>
                   ))}
 
+                  {/* typing indicator */}
                   {streaming && messages[messages.length - 1]?.content === "" && (
-                    <div className="flex items-center gap-1.5 pl-9">
-                      {[0, 1, 2].map((i) => (
-                        <span
-                          key={i}
-                          className="size-1.5 animate-bounce rounded-full bg-navy/40"
-                          style={{ animationDelay: `${i * 120}ms` }}
-                        />
-                      ))}
+                    <div className="flex items-end gap-2">
+                      <Avatar className="size-7" />
+                      <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-border bg-background px-4 py-3.5">
+                        {[0, 1, 2].map((i) => (
+                          <span
+                            key={i}
+                            className={cn(
+                              "size-1.5 rounded-full bg-navy/40",
+                              !reduced && "animate-bounce",
+                            )}
+                            style={{ animationDelay: `${i * 120}ms` }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  {messages.length <= 1 && (
-                    <div className="flex flex-wrap gap-2 pt-1 pl-9">
+                  {/* welcome: quick replies as a 2x2 grid */}
+                  {showWelcomeGrid && (
+                    <div className="grid grid-cols-2 gap-2 pt-1 pl-9">
                       {QUICK_REPLIES.map((q) => (
                         <button
-                          key={q}
+                          key={q.label}
                           type="button"
-                          onClick={() => void send(q)}
-                          className="focus-rd rounded-full border border-navy/15 bg-background px-3 py-1.5 text-xs font-semibold text-navy transition-colors hover:border-rouge hover:text-rouge"
+                          onClick={() => void send(q.label)}
+                          className="group focus-rd flex flex-col items-start gap-2 rounded-xl border border-border bg-background p-3 text-left text-xs font-semibold text-navy transition-all duration-300 hover:-translate-y-0.5 hover:border-rouge/50 hover:shadow-sm"
                         >
-                          {q}
+                          <span className="flex size-7 items-center justify-center rounded-lg bg-navy/5 text-navy transition-colors duration-300 group-hover:bg-rouge group-hover:text-white">
+                            <q.icon className="size-3.5" />
+                          </span>
+                          {q.label}
                         </button>
                       ))}
                     </div>
@@ -419,23 +597,31 @@ export function ChatWidget() {
                     e.preventDefault();
                     void send(input);
                   }}
-                  className="border-t border-border bg-background px-3 py-3"
+                  className="border-t border-border bg-background px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
                 >
                   <div className="flex items-center gap-2">
-                    <input
-                      value={input}
-                      onChange={(e) => setInput(e.target.value.slice(0, 500))}
-                      disabled={streaming}
-                      maxLength={500}
-                      placeholder="Votre question…"
-                      aria-label="Message"
-                      className="focus-rd min-w-0 flex-1 rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-navy outline-none placeholder:text-muted-foreground"
-                    />
+                    <div className="relative min-w-0 flex-1">
+                      <input
+                        ref={inputRef}
+                        value={input}
+                        onChange={(e) => setInput(e.target.value.slice(0, 500))}
+                        disabled={streaming}
+                        maxLength={500}
+                        placeholder="Votre question…"
+                        aria-label="Message"
+                        className="focus-rd w-full rounded-full border border-border bg-surface px-4 py-2.5 text-sm text-navy outline-none transition-colors placeholder:text-muted-foreground focus:border-rouge/60"
+                      />
+                      {input.length > 400 && (
+                        <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 font-mono text-[10px] text-muted-foreground">
+                          {input.length}/500
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="submit"
                       disabled={streaming || !input.trim()}
                       aria-label="Envoyer"
-                      className="focus-rd flex size-10 shrink-0 items-center justify-center rounded-full bg-rouge text-white transition-opacity disabled:opacity-40"
+                      className="focus-rd flex size-10 shrink-0 items-center justify-center rounded-full bg-rouge text-white transition-all duration-300 hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
                     >
                       <Send className="size-4" />
                     </button>
@@ -452,8 +638,9 @@ export function ChatWidget() {
                       href={whatsappLink()}
                       target="_blank"
                       rel="noreferrer"
-                      className="focus-rd font-semibold text-[#128C7E]"
+                      className="focus-rd inline-flex items-center gap-1 rounded-full border border-[#128C7E]/30 px-2.5 py-1 font-semibold text-[#128C7E] transition-colors duration-300 hover:bg-[#128C7E] hover:text-white"
                     >
+                      <MessageCircle className="size-3" />
                       WhatsApp
                     </a>
                   </div>

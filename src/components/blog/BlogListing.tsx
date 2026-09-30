@@ -170,7 +170,7 @@ export function BlogListing({
                   layout
                   initial={reduced ? false : { opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={reduced ? undefined : { opacity: 0, y: -12 }}
+                  exit={reduced ? {} : { opacity: 0, y: -12 }}
                   transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <PostCard post={post} />
@@ -222,8 +222,8 @@ function PillLink({
   return (
     <Link
       to={target.to}
-      params={target.params}
-      search={target.search}
+      {...(target.params ? { params: target.params } : {})}
+      {...(target.search ? { search: target.search } : {})}
       aria-current={active ? "true" : undefined}
       className={`focus-rd relative rounded-full px-4 py-2 text-sm font-bold transition-colors duration-300 ${
         active ? "text-white" : "text-navy hover:bg-navy/5"

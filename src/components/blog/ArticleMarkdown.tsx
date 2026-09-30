@@ -24,10 +24,10 @@ export function extractHeadings(markdown: string): Heading[] {
     const h2 = line.match(/^##\s+(.*)$/);
     const h3 = line.match(/^###\s+(.*)$/);
     if (h2) {
-      const text = h2[1].trim();
+      const text = (h2[1] ?? "").trim();
       headings.push({ depth: 2, text, id: slugify(text) });
     } else if (h3) {
-      const text = h3[1].trim();
+      const text = (h3[1] ?? "").trim();
       headings.push({ depth: 3, text, id: slugify(text) });
     }
   }

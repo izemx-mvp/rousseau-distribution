@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
   Award,
@@ -12,8 +12,8 @@ import {
   Timer,
   Truck,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { BearingOutline, GearOutline, Illustration } from "@/components/illustrations/Tech";
+import { useEffect, useRef, useState } from "react";
+import { GearOutline } from "@/components/illustrations/Tech";
 import { CountUp } from "@/components/motion/CountUp";
 import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import { PostCard } from "@/components/blog/PostCard";
@@ -23,6 +23,40 @@ import { SectionHeading, Swoosh } from "@/components/sections/SectionHeading";
 import { sectors, site } from "@/config/site";
 import { posts } from "@/data/posts";
 import { countByFamily, FAMILIES, type ProductFamily } from "@/data/products";
+
+/* ------------------------------------------------------------------ */
+/* Images (all .png, stored in src/assets)                             */
+/* ------------------------------------------------------------------ */
+import heroBg from "@/assets/hero-bg.png";
+import aboutWarehouse from "@/assets/about-warehouse.png";
+import familyMoteurs from "@/assets/family-moteurs.png";
+import familyCourroies from "@/assets/family-courroies.png";
+import familyTransmission from "@/assets/family-transmission.png";
+import familyRoulements from "@/assets/family-roulements.png";
+import sectorAgro from "@/assets/sector-agroalimentaire.png";
+import sectorPharma from "@/assets/sector-pharmaceutique.png";
+import sectorIndustrie from "@/assets/sector-industrie.png";
+import sectorEmballage from "@/assets/sector-emballage.png";
+import sectorEnergie from "@/assets/sector-energie.png";
+import sectorAutres from "@/assets/sector-autres.png";
+
+const familyImages: Record<ProductFamily, string> = {
+  roulements: familyRoulements,
+  courroies: familyCourroies,
+  moteurs: familyMoteurs,
+  transmission: familyTransmission,
+};
+
+/** Resolves a sector image from its id, whatever the exact id spelling in site.ts. */
+function sectorImage(id: string): string {
+  const key = id.toLowerCase();
+  if (key.includes("agro")) return sectorAgro;
+  if (key.includes("pharma")) return sectorPharma;
+  if (key.includes("emball")) return sectorEmballage;
+  if (key.includes("energ")) return sectorEnergie;
+  if (key.includes("indus")) return sectorIndustrie;
+  return sectorAutres;
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,13 +85,6 @@ export const Route = createFileRoute("/")({
 
 const figureIcons = { boxes: Boxes, factory: Factory, award: Award, truck: Truck } as const;
 
-const familyIllustration: Record<ProductFamily, "bearing" | "belt" | "motor" | "chain"> = {
-  roulements: "bearing",
-  courroies: "belt",
-  moteurs: "motor",
-  transmission: "chain",
-};
-
 const reasons = [
   {
     icon: Layers,
@@ -82,6 +109,47 @@ const reasons = [
 ];
 
 const searchExamples = ["6205-2RS", "Courroie SPB 1600", "Moteur 3 kW IE3", "Chaîne 08B-1"];
+
+const sampleResults = [
+  { ref: "6205-2RS", label: "Roulement rigide à billes", family: "Roulements" },
+  { ref: "SPB 1600", label: "Courroie trapézoïdale", family: "Courroies" },
+  { ref: "3 kW IE3", label: "Moteur triphasé", family: "Moteurs" },
+];
+
+/* ------------------------------------------------------------------ */
+/* Small helpers                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Image that drifts slightly inside its frame while the page scrolls. */
+function ParallaxImage({
+  src,
+  alt,
+  className = "",
+  strength = 28,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  strength?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const reduced = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], [-strength, strength]);
+
+  return (
+    <div ref={ref} className={`relative overflow-hidden ${className}`}>
+      <motion.img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        style={reduced ? {} : { y }}
+        className="absolute inset-0 h-full w-full scale-[1.18] object-cover"
+      />
+    </div>
+  );
+}
 
 function TypingSearch() {
   const [index, setIndex] = useState(0);
@@ -117,8 +185,17 @@ function TypingSearch() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Hero                                                                */
+/* ------------------------------------------------------------------ */
+
 function Hero() {
   const reduced = useReducedMotion();
+  const ref = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "14%"]);
+  const bgScale = useTransform(scrollYProgress, [0, 1], [1, 1.08]);
+
   const line = (delay: number) => ({
     initial: reduced ? false : { opacity: 0, y: 28 },
     animate: { opacity: 1, y: 0 },
@@ -126,25 +203,46 @@ function Hero() {
   });
 
   return (
-    <section className="relative flex min-h-[100svh] items-center overflow-hidden bg-navy-deep pt-24 pb-16">
-      <div className="blueprint absolute inset-0" />
-      <div className="absolute inset-0 bg-[radial-gradient(60%_50%_at_20%_35%,oklch(0.585_0.232_27.5/0.22),transparent_70%)]" />
-      <div className="pointer-events-none absolute -top-40 -left-32 w-[36rem] text-white/7">
-        <div className="spin-slow">
-          <GearOutline strokeWidth={0.9} />
-        </div>
-      </div>
-      <div className="pointer-events-none absolute -right-48 -bottom-56 w-[44rem] text-white/6">
-        <div className="spin-slower">
-          <BearingOutline strokeWidth={0.9} />
-        </div>
-      </div>
+    <section
+      ref={ref}
+      className="relative flex min-h-[100svh] items-center overflow-hidden bg-navy-deep pt-24 pb-16"
+    >
+      {/* Background image with slow parallax */}
+      <motion.div
+        className="absolute inset-0"
+        style={reduced ? {} : { y: bgY, scale: bgScale }}
+        aria-hidden
+      >
+        <img
+          src={heroBg}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="h-full w-full object-cover object-[75%_center]"
+        />
+      </motion.div>
+
+      {/* Readability overlays: dark on the text side, image revealed on the right */}
+      <div className="absolute inset-0 bg-navy-deep/45 lg:bg-transparent" aria-hidden />
+      <div
+        className="absolute inset-0 bg-gradient-to-r from-navy-deep via-navy-deep/85 to-navy-deep/10"
+        aria-hidden
+      />
+      <div className="blueprint absolute inset-0 opacity-60" aria-hidden />
+      <div
+        className="absolute inset-0 bg-[radial-gradient(60%_50%_at_18%_35%,oklch(0.585_0.232_27.5/0.22),transparent_70%)]"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-navy-deep to-transparent"
+        aria-hidden
+      />
 
       <div className="container-rd relative grid items-center gap-14 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
           <motion.span
             {...line(0)}
-            className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold tracking-wide text-white/85 uppercase"
+            className="inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs font-bold tracking-wide text-white/85 uppercase backdrop-blur-sm"
           >
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-2 animate-ping rounded-full bg-rouge opacity-75" />
@@ -174,7 +272,7 @@ function Hero() {
 
           <motion.p
             {...line(0.35)}
-            className="mt-7 max-w-xl text-base leading-relaxed text-white/70 md:text-lg"
+            className="mt-7 max-w-xl text-base leading-relaxed text-white/75 md:text-lg"
           >
             Des milliers de références en roulements, courroies, moteurs électriques et transmission
             mécanique. Sourcing international et conseil technique pour identifier la bonne pièce du
@@ -191,20 +289,36 @@ function Hero() {
             </Link>
             <Link
               to="/catalogue"
-              className="focus-rd inline-flex items-center gap-2 rounded-lg border border-white/35 px-6 py-4 text-sm font-bold text-white transition-colors duration-300 hover:bg-white hover:text-navy"
+              className="focus-rd inline-flex items-center gap-2 rounded-lg border border-white/35 bg-white/5 px-6 py-4 text-sm font-bold text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white hover:text-navy"
             >
               Parcourir le catalogue
             </Link>
           </motion.div>
         </div>
 
+        {/* Signature moment: search card layered over a product render */}
         <motion.div
           initial={reduced ? false : { opacity: 0, scale: 0.94, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="hidden lg:block"
+          className="relative hidden lg:block"
         >
-          <div className="float-y">
+          <div
+            className="absolute -top-10 -right-6 z-0 w-[68%] rotate-[5deg] overflow-hidden rounded-2xl border border-white/20 shadow-lift"
+            aria-hidden
+          >
+            <img
+              src={familyImages.roulements}
+              alt=""
+              loading="eager"
+              decoding="async"
+              className="aspect-[4/3] w-full object-cover"
+            />
+            <span className="absolute inset-0 bg-gradient-to-t from-navy-deep/50 via-transparent to-transparent" />
+            <span className="absolute bottom-0 left-0 h-[3px] w-full bg-rouge" />
+          </div>
+
+          <div className="float-y relative z-10 mt-24 mr-10">
             <Link
               to="/catalogue"
               className="focus-rd block rounded-2xl border border-white/15 bg-white p-6 shadow-lift transition-transform duration-300 hover:-translate-y-1"
@@ -221,17 +335,30 @@ function Hero() {
               <div className="mt-3 rounded-lg bg-navy/4 px-4 py-3">
                 <TypingSearch />
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {["Roulements", "Courroies", "Moteurs"].map((c) => (
-                  <span
-                    key={c}
-                    className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-navy"
+
+              <ul className="mt-4 divide-y divide-border">
+                {sampleResults.map((r, i) => (
+                  <motion.li
+                    key={r.ref}
+                    initial={reduced ? false : { opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 1.1 + i * 0.12 }}
+                    className="flex items-center justify-between gap-3 py-2.5"
                   >
-                    {c}
-                  </span>
+                    <span className="min-w-0">
+                      <span className="mono-ref block text-xs font-bold text-navy">{r.ref}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {r.label}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-navy/5 px-2.5 py-1 text-[11px] font-semibold text-navy">
+                      {r.family}
+                    </span>
+                  </motion.li>
                 ))}
-              </div>
-              <span className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold text-rouge">
+              </ul>
+
+              <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-rouge">
                 Ouvrir le catalogue <ArrowRight className="size-3.5" />
               </span>
             </Link>
@@ -258,6 +385,10 @@ function Hero() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Marquee                                                             */
+/* ------------------------------------------------------------------ */
+
 function Marquee() {
   const list = [...site.brands, ...site.brands];
   return (
@@ -278,9 +409,17 @@ function Marquee() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Figures                                                             */
+/* ------------------------------------------------------------------ */
+
 function Figures() {
   return (
-    <section className="bg-navy">
+    <section className="relative bg-navy">
+      <span
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rouge to-transparent"
+        aria-hidden
+      />
       <div className="blueprint relative">
         <div className="container-rd relative grid divide-y divide-white/10 py-4 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x">
           {site.figures.map((f) => {
@@ -305,6 +444,12 @@ function Figures() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Families: asymmetric bento with product renders                     */
+/* ------------------------------------------------------------------ */
+
+const familySpans = ["lg:col-span-7", "lg:col-span-5", "lg:col-span-5", "lg:col-span-7"];
+
 function Families() {
   const counts = countByFamily();
   return (
@@ -315,29 +460,37 @@ function Families() {
           title="Familles de produits"
           intro="Quatre familles couvrant l'essentiel des organes mécaniques et électriques sollicités en production."
         />
-        <RevealGroup className="mt-14 grid gap-6 md:grid-cols-2">
-          {FAMILIES.map((f) => (
-            <RevealItem key={f.id}>
+        <RevealGroup className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-12">
+          {FAMILIES.map((f, i) => (
+            <RevealItem key={f.id} className={`h-full ${familySpans[i % 4]}`}>
               <Link
                 to="/catalogue"
                 search={{ famille: f.id }}
-                className="card-rd group focus-rd flex h-full flex-col p-8"
+                className="card-rd group focus-rd relative flex h-full flex-col overflow-hidden !p-0"
               >
-                <span className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 -translate-x-6 rotate-12 bg-rouge/6 opacity-0 transition-all duration-500 group-hover:translate-x-0 group-hover:opacity-100" />
-                <div className="relative size-20 text-navy/30 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-6">
-                  <Illustration name={familyIllustration[f.id]} strokeWidth={1.3} />
-                </div>
-                <h3 className="relative mt-6 text-2xl text-navy">{f.label}</h3>
-                <p className="relative mt-3 text-sm leading-relaxed text-slate-ink">
-                  {f.description}
-                </p>
-                <div className="relative mt-6 flex items-center justify-between pt-4">
-                  <span className="mono-ref font-bold text-rouge">
+                {/* red line that grows on hover */}
+                <span className="absolute top-0 left-0 z-20 h-[3px] w-0 bg-rouge transition-all duration-500 group-hover:w-full" />
+
+                <div className="relative h-60 overflow-hidden lg:h-72">
+                  <img
+                    src={familyImages[f.id]}
+                    alt={`Illustration ${f.label.toLowerCase()}`}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
+                  />
+                  <span className="absolute inset-0 bg-gradient-to-t from-navy-deep/60 via-transparent to-transparent" />
+                  <span className="mono-ref absolute bottom-4 left-4 rounded-md bg-white/95 px-3 py-1.5 text-xs font-bold text-navy shadow-sm">
                     {counts[f.id]} références
                   </span>
-                  <span className="inline-flex items-center gap-1.5 text-sm font-bold text-navy">
+                </div>
+
+                <div className="flex flex-1 flex-col p-7">
+                  <h3 className="text-2xl text-navy">{f.label}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-ink">{f.description}</p>
+                  <span className="mt-auto inline-flex items-center gap-1.5 pt-6 text-sm font-bold text-navy">
                     Voir la famille
-                    <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    <ArrowRight className="size-4 text-rouge transition-transform duration-300 group-hover:translate-x-1" />
                   </span>
                 </div>
               </Link>
@@ -349,6 +502,10 @@ function Families() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Why                                                                 */
+/* ------------------------------------------------------------------ */
+
 function Why() {
   return (
     <section className="section-y bg-background">
@@ -359,7 +516,19 @@ function Why() {
             title={`Pourquoi ${site.name}`}
             intro="Un interlocuteur technique qui connaît les pièces, pas seulement un catalogue en ligne."
           />
+          <Reveal className="relative mt-10 hidden md:block">
+            <span
+              className="absolute -right-3 -bottom-3 h-full w-full rounded-xl border-2 border-rouge/35"
+              aria-hidden
+            />
+            <ParallaxImage
+              src={aboutWarehouse}
+              alt="Allée d'entrepôt avec étagères de pièces de rechange"
+              className="relative aspect-[4/3] rounded-xl shadow-lift"
+            />
+          </Reveal>
         </div>
+
         <RevealGroup className="relative space-y-3 lg:pl-8" stagger={0.1}>
           <span className="absolute top-0 bottom-0 left-0 hidden w-px bg-border lg:block" />
           {reasons.map((r) => (
@@ -381,10 +550,25 @@ function Why() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Sectors: image tiles, caption revealed on hover (always on mobile)  */
+/* ------------------------------------------------------------------ */
+
+// Pattern for a 6-tile grid on lg (4 columns): wide, 1, 1 / 1, wide, 1
+const sectorSpans = ["lg:col-span-2", "", "", "", "lg:col-span-2", ""];
+
 function Sectors() {
   return (
     <section className="relative overflow-hidden bg-navy-deep">
       <div className="blueprint absolute inset-0" />
+      <div
+        className="pointer-events-none absolute -top-32 -right-24 w-[30rem] text-white/6"
+        aria-hidden
+      >
+        <div className="spin-slow">
+          <GearOutline strokeWidth={0.9} />
+        </div>
+      </div>
       <div className="container-rd relative section-y">
         <SectionHeading
           tone="light"
@@ -392,17 +576,31 @@ function Sectors() {
           title="Des industries aux contraintes très différentes"
           intro="Nous fournissons des pièces de rechange à des sites de production de tous secteurs."
         />
-        <RevealGroup className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.08}>
-          {sectors.map((s) => (
-            <RevealItem key={s.id}>
+        <RevealGroup className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" stagger={0.08}>
+          {sectors.map((s, i) => (
+            <RevealItem key={s.id} className={`h-full ${sectorSpans[i % 6]}`}>
               <Link
                 to="/secteurs"
                 hash={s.id}
-                className="focus-rd group block h-full rounded-xl border border-white/12 bg-white/5 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-rouge hover:bg-white/8"
+                className="focus-rd group relative flex h-full min-h-[18rem] flex-col justify-end overflow-hidden rounded-xl border border-white/12 transition-colors duration-300 hover:border-rouge focus-visible:border-rouge"
               >
-                <h3 className="text-lg font-bold text-white">{s.label}</h3>
-                <Swoosh className="mt-3 w-10" />
-                <p className="mt-4 text-sm leading-relaxed text-white/60">{s.caption}</p>
+                <img
+                  src={sectorImage(s.id)}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.07]"
+                />
+                <span className="absolute inset-0 bg-gradient-to-t from-navy-deep via-navy-deep/55 to-navy-deep/5" />
+                <span className="absolute top-0 left-0 h-[3px] w-0 bg-rouge transition-all duration-500 group-hover:w-full" />
+
+                <span className="relative block p-6">
+                  <h3 className="text-lg font-bold text-white">{s.label}</h3>
+                  <Swoosh className="mt-3 w-10" />
+                  <p className="mt-3 max-h-24 text-sm leading-relaxed text-white/75 transition-all duration-500 lg:max-h-0 lg:overflow-hidden lg:opacity-0 lg:group-hover:max-h-24 lg:group-hover:opacity-100 lg:group-focus-visible:max-h-24 lg:group-focus-visible:opacity-100">
+                    {s.caption}
+                  </p>
+                </span>
               </Link>
             </RevealItem>
           ))}
@@ -411,6 +609,10 @@ function Sectors() {
     </section>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Latest posts                                                        */
+/* ------------------------------------------------------------------ */
 
 function LatestPosts() {
   const latest = [...posts]
@@ -445,6 +647,10 @@ function LatestPosts() {
     </section>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Page                                                                */
+/* ------------------------------------------------------------------ */
 
 function Home() {
   const jsonLd = {

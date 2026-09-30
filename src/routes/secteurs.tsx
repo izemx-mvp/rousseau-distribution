@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { PageHero } from "@/components/layout/PageHero";
 import { CtaBand } from "@/components/sections/CtaBand";
 import { RevealGroup, RevealItem } from "@/components/motion/Reveal";
+import { ParallaxImage } from "@/components/motion/ParallaxImage";
 import {
   BearingOutline,
   BeltOutline,
@@ -14,6 +15,7 @@ import {
   MotorOutline,
 } from "@/components/illustrations/Tech";
 import { sectors, site } from "@/config/site";
+import { sectorImage } from "@/lib/sector-image";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/secteurs")({
@@ -79,11 +81,42 @@ function SecteursPage() {
         breadcrumb={[{ label: "Accueil", to: "/" }, { label: "Secteurs" }]}
       />
 
-      <section className="relative bg-background">
+      <section className="relative overflow-x-clip bg-background">
+        {/* Mobile / tablet: horizontal chip navigation */}
+        <nav
+          aria-label="Navigation des secteurs"
+          className="container-rd -mb-4 pt-8 lg:hidden"
+        >
+          <ul className="flex gap-2 overflow-x-auto pb-2">
+            {sectors.map((s) => (
+              <li key={s.id} className="shrink-0">
+                <a
+                  href={`#${s.id}`}
+                  className={cn(
+                    "focus-rd inline-flex items-center gap-2 rounded-full border py-1.5 pr-4 pl-1.5 text-sm font-semibold transition-colors duration-300",
+                    active === s.id
+                      ? "border-rouge bg-rouge text-white"
+                      : "border-border bg-background text-navy hover:border-navy/30",
+                  )}
+                >
+                  <img
+                    src={sectorImage(s.id)}
+                    alt=""
+                    loading="lazy"
+                    className="size-7 rounded-full object-cover"
+                  />
+                  {s.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
         <div className="container-rd flex gap-12">
+          {/* Desktop: sticky scroll-spy navigation with thumbnails */}
           <nav
             aria-label="Navigation des secteurs"
-            className="sticky top-28 hidden h-max w-56 shrink-0 py-16 lg:block"
+            className="sticky top-28 hidden h-max w-64 shrink-0 py-16 lg:block"
           >
             <p className="mb-4 text-xs font-bold tracking-[0.18em] text-slate-ink uppercase">
               Secteurs
@@ -94,12 +127,21 @@ function SecteursPage() {
                   <a
                     href={`#${s.id}`}
                     className={cn(
-                      "focus-rd -ml-px block border-l-2 py-2 pl-4 text-sm transition-colors duration-300",
+                      "focus-rd -ml-px flex items-center gap-3 border-l-2 py-2 pl-3 text-sm transition-colors duration-300",
                       active === s.id
                         ? "border-rouge font-bold text-rouge"
                         : "border-transparent text-slate-ink hover:text-navy",
                     )}
                   >
+                    <img
+                      src={sectorImage(s.id)}
+                      alt=""
+                      loading="lazy"
+                      className={cn(
+                        "size-8 rounded-md object-cover transition-all duration-300",
+                        active === s.id ? "opacity-100 ring-2 ring-rouge" : "opacity-60 grayscale",
+                      )}
+                    />
                     {s.label}
                   </a>
                 </li>
@@ -107,23 +149,18 @@ function SecteursPage() {
             </ul>
           </nav>
 
-          <div className="flex-1">
-            {sectors.map((sector, i) => {
-              const Illu = sectorIllustrations[i % sectorIllustrations.length]!;
-              const fromLeft = i % 2 === 0;
-              return (
-                <SectorSection
-                  key={sector.id}
-                  sector={sector}
-                  Illustration={Illu}
-                  fromLeft={fromLeft}
-                  odd={i % 2 === 1}
-                  registerRef={(el) => {
-                    sectionRefs.current[sector.id] = el;
-                  }}
-                />
-              );
-            })}
+          <div className="min-w-0 flex-1 divide-y divide-border">
+            {sectors.map((sector, i) => (
+              <SectorSection
+                key={sector.id}
+                sector={sector}
+                Illustration={sectorIllustrations[i % sectorIllustrations.length]!}
+                fromLeft={i % 2 === 0}
+                registerRef={(el) => {
+                  sectionRefs.current[sector.id] = el;
+                }}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -137,13 +174,11 @@ function SectorSection({
   sector,
   Illustration,
   fromLeft,
-  odd,
   registerRef,
 }: {
   sector: (typeof sectors)[number];
-  Illustration: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  Illustration: ComponentType<{ className?: string; strokeWidth?: number }>;
   fromLeft: boolean;
-  odd: boolean;
   registerRef: (el: HTMLElement | null) => void;
 }) {
   const reduced = useReducedMotion();
@@ -153,24 +188,18 @@ function SectorSection({
       id={sector.id}
       data-sector-id={sector.id}
       ref={registerRef}
-      className={cn("scroll-mt-28 py-16 md:py-20", odd && "bg-surface")}
+      className="scroll-mt-28 py-16 md:py-24"
     >
-      <div
-        className={cn(
-          "grid items-center gap-10 md:grid-cols-2",
-          !fromLeft && "md:[&>*:first-child]:order-2",
-        )}
-      >
+      <div className="grid items-center gap-12 md:grid-cols-2">
+        {/* Text */}
         <motion.div
           initial={reduced ? false : { opacity: 0, x: fromLeft ? -40 : 40 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+          className={fromLeft ? "md:order-1" : "md:order-2"}
         >
-          <p className="text-xs font-bold tracking-[0.18em] text-rouge uppercase">
-            Secteur
-          </p>
-          <h2 className="mt-3 text-3xl leading-tight text-navy md:text-4xl">{sector.label}</h2>
+          <h2 className="text-3xl leading-tight text-navy md:text-4xl">{sector.label}</h2>
           <span className="swoosh mt-5" />
           <p className="mt-6 text-base leading-relaxed text-slate-ink">{sector.text}</p>
 
@@ -185,24 +214,68 @@ function SectorSection({
             ))}
           </RevealGroup>
 
-          <Link
-            to="/catalogue"
-            className="focus-rd group mt-8 inline-flex items-center gap-2 rounded-lg bg-navy px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift"
-          >
-            Voir les références
-            <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
-          </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              to="/catalogue"
+              className="focus-rd group inline-flex items-center gap-2 rounded-lg bg-navy px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift"
+            >
+              Voir les références
+              <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </Link>
+            <Link
+              to="/contact"
+              className="focus-rd inline-flex items-center gap-2 rounded-lg border border-navy/20 px-6 py-3.5 text-sm font-bold text-navy transition-colors duration-300 hover:border-rouge/40 hover:text-rouge"
+            >
+              Demander un devis
+            </Link>
+          </div>
         </motion.div>
 
+        {/* Image */}
         <motion.div
           initial={reduced ? false : { opacity: 0, x: fromLeft ? 40 : -40 }}
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-          className="relative mx-auto aspect-square w-full max-w-sm text-navy"
+          className={cn("relative order-first", fromLeft ? "md:order-2" : "md:order-1")}
         >
-          <div className="absolute inset-6 opacity-80">
+          {/* faint outline illustration peeking behind the image */}
+          <div
+            className={cn(
+              "pointer-events-none absolute -top-10 w-40 text-navy/10",
+              fromLeft ? "-right-6" : "-left-6",
+            )}
+            aria-hidden
+          >
             <Illustration strokeWidth={1} />
+          </div>
+
+          {/* offset red frame */}
+          <span
+            className={cn(
+              "absolute -bottom-3 h-full w-full rounded-2xl border-2 border-rouge/35",
+              fromLeft ? "-right-3" : "-left-3",
+            )}
+            aria-hidden
+          />
+
+          <div className="relative overflow-hidden rounded-2xl shadow-lift">
+            <ParallaxImage
+              src={sectorImage(sector.id)}
+              alt={`Illustration du secteur ${sector.label}`}
+              className="aspect-[4/3]"
+            />
+            <span className="absolute inset-0 bg-gradient-to-t from-navy-deep/85 via-navy-deep/10 to-transparent" />
+            <p className="absolute inset-x-0 bottom-0 p-6 text-sm leading-relaxed text-white/85">
+              {sector.caption}
+            </p>
+            <motion.span
+              className="absolute top-0 left-0 h-[3px] w-full origin-left bg-rouge"
+              initial={reduced ? false : { scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.9, delay: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            />
           </div>
         </motion.div>
       </div>

@@ -118,9 +118,11 @@ async function runTool(
   sessionId: string,
 ): Promise<{ result: unknown; cards?: { type: "products" | "posts" | "lead"; items: unknown } }> {
   if (name === "search_catalogue") {
-    const found = searchProducts(String(args["query"] ?? ""), {
-      family: args["family"] as ProductFamily | undefined,
-    }).slice(0, 4);
+    const family = args["family"] as ProductFamily | undefined;
+    const found = searchProducts(String(args["query"] ?? ""), family ? { family } : {}).slice(
+      0,
+      4,
+    );
     const items = found.map((p) => compactProduct(p.reference)).filter(Boolean);
     return { result: items, cards: { type: "products", items } };
   }
@@ -238,7 +240,6 @@ export const Route = createFileRoute("/api/public/chat")({
                   args: string;
                 }[] = [];
 
-                // eslint-disable-next-line no-constant-condition
                 while (true) {
                   const { done, value } = await reader.read();
                   if (done) break;

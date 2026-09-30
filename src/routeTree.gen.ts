@@ -14,6 +14,7 @@ import { Route as AProposRouteImport } from './routes/a-propos'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as SecteursRouteImport } from './routes/secteurs'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CatalogueIndexRouteImport } from './routes/catalogue.index'
 import { Route as CatalogueReferenceRouteImport } from './routes/catalogue.$reference'
 import { Route as ApiPublicChatRouteImport } from './routes/api/public/chat'
@@ -44,6 +45,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CatalogueIndexRoute = CatalogueIndexRouteImport.update({
   id: '/catalogue/',
   path: '/catalogue/',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/a-propos': typeof AProposRoute
   '/contact': typeof ContactRoute
   '/secteurs': typeof SecteursRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/catalogue/$reference': typeof CatalogueReferenceRoute
   '/blog/': typeof BlogIndexRoute
   '/catalogue/': typeof CatalogueIndexRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/a-propos': typeof AProposRoute
   '/contact': typeof ContactRoute
   '/secteurs': typeof SecteursRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/catalogue/$reference': typeof CatalogueReferenceRoute
   '/blog': typeof BlogIndexRoute
   '/catalogue': typeof CatalogueIndexRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/a-propos': typeof AProposRoute
   '/contact': typeof ContactRoute
   '/secteurs': typeof SecteursRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/catalogue/$reference': typeof CatalogueReferenceRoute
   '/blog/': typeof BlogIndexRoute
   '/catalogue/': typeof CatalogueIndexRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/a-propos'
     | '/contact'
     | '/secteurs'
+    | '/blog/$slug'
     | '/catalogue/$reference'
     | '/blog/'
     | '/catalogue/'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/a-propos'
     | '/contact'
     | '/secteurs'
+    | '/blog/$slug'
     | '/catalogue/$reference'
     | '/blog'
     | '/catalogue'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/a-propos'
     | '/contact'
     | '/secteurs'
+    | '/blog/$slug'
     | '/catalogue/$reference'
     | '/blog/'
     | '/catalogue/'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   AProposRoute: typeof AProposRoute
   ContactRoute: typeof ContactRoute
   SecteursRoute: typeof SecteursRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   CatalogueReferenceRoute: typeof CatalogueReferenceRoute
   BlogIndexRoute: typeof BlogIndexRoute
   CatalogueIndexRoute: typeof CatalogueIndexRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/catalogue/': {
       id: '/catalogue/'
       path: '/catalogue'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   AProposRoute: AProposRoute,
   ContactRoute: ContactRoute,
   SecteursRoute: SecteursRoute,
+  BlogSlugRoute: BlogSlugRoute,
   CatalogueReferenceRoute: CatalogueReferenceRoute,
   BlogIndexRoute: BlogIndexRoute,
   CatalogueIndexRoute: CatalogueIndexRoute,

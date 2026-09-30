@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-type Props = { className?: string; strokeWidth?: number };
+type Props = { className?: string | undefined; strokeWidth?: number | undefined };
 
 const base = "none";
 

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import logo from "@/assets/rousseau-logo.png.asset.json";
+import logo from "@/assets/rousseau-logo.png";
 import { cn } from "@/lib/utils";
 
 export function Logo({
@@ -16,7 +16,7 @@ export function Logo({
       className={cn("inline-flex items-center focus-rd", className)}
     >
       <img
-        src={logo.url}
+        src={logo}
         alt="Rousseau Distribution"
         className={cn(
           "h-8 w-auto transition-all duration-300 md:h-9",

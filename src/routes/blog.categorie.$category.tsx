@@ -2,16 +2,19 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHero } from "@/components/layout/PageHero";
 import { BlogListing } from "@/components/blog/BlogListing";
+import { BlogCatalogueLinks } from "@/components/blog/BlogCatalogueLinks";
 import { CtaBand } from "@/components/sections/CtaBand";
 import { CATEGORIES, posts, type PostCategory } from "@/data/posts";
 import { site } from "@/config/site";
+import catalogueEmpty from "@/assets/catalogue-empty.png";
 
 const CATEGORY_IDS = CATEGORIES.map((c) => c.id);
 
 const CATEGORY_INTROS: Record<PostCategory, string> = {
   "guides-techniques":
     "Méthodes et critères de sélection pour bien choisir vos pièces de rechange industrielles.",
-  maintenance: "Conseils pratiques pour anticiper l'usure et planifier vos opérations de maintenance.",
+  maintenance:
+    "Conseils pratiques pour anticiper l'usure et planifier vos opérations de maintenance.",
   sourcing: "Approvisionnement, équivalences et gestion des stocks de pièces critiques.",
   secteurs: "Retours d'expérience et besoins spécifiques par secteur d'activité.",
   actualites: "Actualités et informations de Rousseau Distribution.",
@@ -49,7 +52,13 @@ function BlogCategoryRoute() {
     return (
       <div className="section-y">
         <div className="container-rd flex flex-col items-center gap-4 py-24 text-center">
-          <h1 className="text-3xl font-bold text-navy">Catégorie introuvable</h1>
+          <img
+            src={catalogueEmpty}
+            alt=""
+            decoding="async"
+            className="size-36 rounded-2xl object-cover shadow-lift"
+          />
+          <h1 className="mt-4 text-3xl font-bold text-navy">Catégorie introuvable</h1>
           <p className="max-w-md text-sm text-slate-ink">
             Cette catégorie n'existe pas ou n'est plus disponible. Retrouvez tous nos articles sur
             le blog.
@@ -72,6 +81,8 @@ function BlogCategoryRoute() {
     secteurs: "Secteurs",
     actualites: "Actualités",
   };
+
+  const count = posts.filter((p) => p.category === cat.id).length;
 
   const jsonLd = [
     {
@@ -110,7 +121,35 @@ function BlogCategoryRoute() {
           { label: "Blog", to: "/blog" },
           { label: cat.label },
         ]}
-      />
+      >
+        <div className="flex flex-col items-center gap-4">
+          <p className="mono-ref text-sm font-bold text-white/70">
+            {count} {count > 1 ? "articles" : "article"}
+          </p>
+          <ul className="flex flex-wrap items-center justify-center gap-2">
+            <li>
+              <Link
+                to="/blog"
+                className="focus-rd rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur-sm transition-colors duration-300 hover:border-rouge hover:bg-rouge hover:text-white"
+              >
+                Tous les articles
+              </Link>
+            </li>
+            {CATEGORIES.filter((c) => c.id !== cat.id).map((c) => (
+              <li key={c.id}>
+                <Link
+                  to="/blog/categorie/$category"
+                  params={{ category: c.id }}
+                  className="focus-rd rounded-full border border-white/20 bg-white/5 px-3.5 py-1.5 text-xs font-bold text-white/85 backdrop-blur-sm transition-colors duration-300 hover:border-rouge hover:bg-rouge hover:text-white"
+                >
+                  {c.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </PageHero>
+
       <div className="section-y">
         <div className="container-rd">
           <BlogListing
@@ -126,6 +165,8 @@ function BlogCategoryRoute() {
           />
         </div>
       </div>
+
+      <BlogCatalogueLinks />
       <CtaBand title="Une pièce à identifier ?" />
     </div>
   );

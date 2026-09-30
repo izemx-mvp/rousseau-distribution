@@ -1,19 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Mail, MapPin, MessageCircle, Phone, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Clock, Mail, MapPin, MessageCircle, Phone, Send, X } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { z } from "zod";
 import { PageHero } from "@/components/layout/PageHero";
+import { Reveal, RevealGroup, RevealItem } from "@/components/motion/Reveal";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { getProduct } from "@/data/products";
+import { getProductImage } from "@/lib/product-image";
 import { useQuote } from "@/lib/quote-store";
 import { site, sectors, whatsappLink } from "@/config/site";
 import { cn } from "@/lib/utils";
+import heroBg from "@/assets/hero-bg.png";
 
 const contactSearchSchema = z.object({
   piece: z.string().optional(),
@@ -83,6 +86,21 @@ function validate(values: FormValues): FormErrors {
   return errors;
 }
 
+const steps = [
+  {
+    title: "Vous nous écrivez",
+    text: "Référence, photo ou caractéristiques de la pièce recherchée.",
+  },
+  {
+    title: "Nous identifions",
+    text: "Notre équipe technique retrouve la référence ou son équivalence.",
+  },
+  {
+    title: "Nous vous répondons",
+    text: "Vous recevez une proposition adaptée à votre besoin.",
+  },
+];
+
 const faqItems = [
   {
     q: "Quels sont les délais de livraison ?",
@@ -128,7 +146,6 @@ function ContactPage() {
 
   useEffect(() => {
     setValues((prev) => ({ ...prev, references: referencesFromQuote }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referencesFromQuote]);
 
   function updateField<K extends keyof FormValues>(key: K, value: FormValues[K]) {
@@ -140,7 +157,7 @@ function ContactPage() {
     setErrors(validate(values));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const nextErrors = validate(values);
     setErrors(nextErrors);
@@ -168,17 +185,97 @@ function ContactPage() {
     }
   }
 
+  const contactRows = [
+    {
+      icon: Phone,
+      label: "Téléphone",
+      content: (
+        <a href={`tel:${site.contact.phone}`} className="focus-rd hover:underline">
+          {site.contact.phoneDisplay}
+        </a>
+      ),
+    },
+    {
+      icon: Mail,
+      label: "Email",
+      content: (
+        <a href={`mailto:${site.contact.email}`} className="focus-rd break-all hover:underline">
+          {site.contact.email}
+        </a>
+      ),
+    },
+    {
+      icon: MapPin,
+      label: "Adresse",
+      content: (
+        <span>
+          {site.contact.address}
+          <br />
+          {site.contact.city}
+        </span>
+      ),
+    },
+    {
+      icon: Clock,
+      label: "Horaires",
+      content: <span>{site.contact.hours}</span>,
+    },
+  ];
+
   return (
     <div>
       <PageHero
         title="Contact"
         subtitle="Demande de devis"
         breadcrumb={[{ label: "Accueil", to: "/" }, { label: "Contact" }]}
-      />
+      >
+        {/* fast paths for people who prefer not to fill the form */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <a
+            href={`tel:${site.contact.phone}`}
+            className="focus-rd inline-flex items-center gap-2 rounded-lg border border-white/25 bg-white/5 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-sm transition-colors duration-300 hover:bg-white hover:text-navy"
+          >
+            <Phone className="size-4" />
+            Appeler
+          </a>
+          <a
+            href={whatsappLink()}
+            target="_blank"
+            rel="noreferrer"
+            className="focus-rd inline-flex items-center gap-2 rounded-lg bg-rouge px-5 py-2.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-rouge"
+          >
+            <MessageCircle className="size-4" />
+            WhatsApp
+          </a>
+        </div>
+      </PageHero>
 
       <section className="section-y bg-background">
-        <div className="container-rd grid gap-10 lg:grid-cols-[1.15fr_1fr]">
-          <div className="card-rd overflow-visible p-7 md:p-10">
+        {/* process: what happens after sending */}
+        <RevealGroup
+          className="container-rd mb-12 grid gap-4 md:grid-cols-3"
+          stagger={0.1}
+        >
+          {steps.map((step, i) => (
+            <RevealItem key={step.title}>
+              <div className="flex h-full items-start gap-4 rounded-xl border border-border bg-surface/60 p-5">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-navy font-mono text-sm font-bold text-white">
+                  {i + 1}
+                </span>
+                <span>
+                  <span className="block text-sm font-bold text-navy">{step.title}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-slate-ink">
+                    {step.text}
+                  </span>
+                </span>
+              </div>
+            </RevealItem>
+          ))}
+        </RevealGroup>
+
+        <div className="container-rd grid gap-10 lg:grid-cols-[1.15fr_1fr] lg:items-start">
+          <div className="card-rd relative overflow-visible p-7 md:p-10">
+            <span className="absolute top-0 left-0 h-[3px] w-24 bg-rouge" aria-hidden />
             <AnimatePresence mode="wait">
               {success ? (
                 <SuccessState key="success" items={submittedItems} />
@@ -193,6 +290,13 @@ function ContactPage() {
                   onSubmit={handleSubmit}
                   className="space-y-6"
                 >
+                  <div>
+                    <h2 className="text-2xl leading-tight text-navy">Décrivez votre besoin</h2>
+                    <p className="mt-2 text-sm text-slate-ink">
+                      Les champs marqués d'un astérisque sont obligatoires.
+                    </p>
+                  </div>
+
                   <div className="grid gap-6 sm:grid-cols-2">
                     <FloatingField
                       id="nom"
@@ -253,31 +357,70 @@ function ContactPage() {
                     </select>
                   </div>
 
-                  {items.length > 0 && (
-                    <div>
-                      <p className="mb-2 text-xs font-bold tracking-wide text-slate-ink uppercase">
-                        Pièces ajoutées à votre demande
-                      </p>
-                      <ul className="flex flex-wrap gap-2">
-                        {items.map((item) => (
-                          <li
-                            key={item.reference}
-                            className="mono-ref flex items-center gap-2 rounded-full border border-surface-line bg-surface px-3 py-1.5 text-navy"
-                          >
-                            {item.reference}
-                            <button
-                              type="button"
-                              onClick={() => remove(item.reference)}
-                              aria-label={`Retirer ${item.reference} de la demande`}
-                              className="focus-rd text-slate-ink transition-colors hover:text-rouge"
-                            >
-                              <X className="size-3.5" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  {/* items coming from the quote list, with thumbnails */}
+                  <AnimatePresence initial={false}>
+                    {items.length > 0 && (
+                      <motion.div
+                        key="quote-items"
+                        initial={reduced ? false : { opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <p className="mb-2 text-xs font-bold tracking-wide text-slate-ink uppercase">
+                          Pièces ajoutées à votre demande
+                        </p>
+                        <ul className="space-y-2">
+                          {items.map((item) => {
+                            const product = getProduct(item.reference);
+                            const img = product ? getProductImage(product) : null;
+                            return (
+                              <li
+                                key={item.reference}
+                                className="flex items-center gap-3 rounded-lg border border-surface-line bg-surface p-2.5 pr-3"
+                              >
+                                {img && (
+                                  <span
+                                    className={cn(
+                                      "size-12 shrink-0 overflow-hidden rounded-md",
+                                      img.specific ? "bg-background" : "bg-navy-deep",
+                                    )}
+                                  >
+                                    <img
+                                      src={img.src}
+                                      alt=""
+                                      loading="lazy"
+                                      decoding="async"
+                                      className={cn(
+                                        "size-full",
+                                        img.specific ? "object-contain p-1" : "object-cover",
+                                      )}
+                                    />
+                                  </span>
+                                )}
+                                <span className="min-w-0 flex-1">
+                                  <span className="mono-ref block text-xs font-bold text-navy">
+                                    {item.reference}
+                                  </span>
+                                  <span className="block truncate text-xs text-slate-ink">
+                                    {item.designation} × {item.quantity}
+                                  </span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => remove(item.reference)}
+                                  aria-label={`Retirer ${item.reference} de la demande`}
+                                  className="focus-rd rounded-md p-1.5 text-slate-ink transition-colors hover:bg-rouge/10 hover:text-rouge"
+                                >
+                                  <X className="size-4" />
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <FloatingTextarea
                     id="references"
@@ -335,7 +478,7 @@ function ContactPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="focus-rd inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rouge px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-rouge disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
+                    className="group focus-rd inline-flex w-full items-center justify-center gap-2 rounded-lg bg-rouge px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-rouge disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto"
                   >
                     {submitting ? (
                       <>
@@ -346,7 +489,10 @@ function ContactPage() {
                         Envoi en cours…
                       </>
                     ) : (
-                      "Envoyer ma demande"
+                      <>
+                        Envoyer ma demande
+                        <Send className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
+                      </>
                     )}
                   </button>
                 </motion.form>
@@ -354,43 +500,52 @@ function ContactPage() {
             </AnimatePresence>
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl bg-navy-deep p-8 text-white md:p-10">
-            <div className="blueprint absolute inset-0" />
+          {/* Coordinates panel */}
+          <div className="relative overflow-hidden rounded-2xl bg-navy-deep p-8 text-white md:p-10 lg:sticky lg:top-28">
+            <img
+              src={heroBg}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover opacity-25"
+              aria-hidden
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-navy-deep/60 via-navy-deep/80 to-navy-deep" />
+            <div className="blueprint absolute inset-0 opacity-60" />
             <div className="relative">
               <h2 className="text-2xl leading-tight">Nos coordonnées</h2>
               <span className="swoosh mt-4" />
 
-              <ul className="mt-8 space-y-5 text-sm">
-                <li className="flex items-start gap-3">
-                  <Phone className="mt-0.5 size-4 shrink-0 text-rouge" />
-                  <a href={`tel:${site.contact.phone}`} className="focus-rd hover:underline">
-                    {site.contact.phoneDisplay}
-                  </a>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Mail className="mt-0.5 size-4 shrink-0 text-rouge" />
-                  <a href={`mailto:${site.contact.email}`} className="focus-rd hover:underline">
-                    {site.contact.email}
-                  </a>
-                </li>
-                <li className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-rouge" />
-                  <span>
-                    {site.contact.address}
-                    <br />
-                    {site.contact.city}
-                  </span>
-                </li>
-                <li className="flex items-start gap-3 text-white/70">
-                  <span className="mt-0.5 size-4 shrink-0" />
-                  {site.contact.hours}
-                </li>
+              <ul className="mt-8 space-y-2 text-sm">
+                {contactRows.map((row) => (
+                  <li
+                    key={row.label}
+                    className="-mx-3 flex items-start gap-4 rounded-xl p-3 transition-colors duration-300 hover:bg-white/5"
+                  >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/10 text-rouge">
+                      <row.icon className="size-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[11px] font-semibold tracking-wide text-white/50 uppercase">
+                        {row.label}
+                      </span>
+                      <span className="mt-0.5 block leading-relaxed text-white/90">
+                        {row.content}
+                      </span>
+                    </span>
+                  </li>
+                ))}
               </ul>
 
+              {/* map placeholder with a pulsing pin */}
               <div className="relative mt-8 aspect-[4/3] overflow-hidden rounded-xl border border-white/15">
                 <div className="blueprint absolute inset-0" />
                 <div className="absolute inset-0 bg-navy-deep/40" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full">
+                <span className="absolute top-1/2 left-1/2 size-3 -translate-x-1/2 -translate-y-1/2">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-rouge/60" />
+                  <span className="relative inline-flex size-3 rounded-full bg-rouge" />
+                </span>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[130%]">
                   <MapPin className="size-9 text-rouge drop-shadow-[0_4px_10px_rgba(0,0,0,0.4)]" />
                 </div>
                 <span className="absolute right-3 bottom-3 text-[11px] tracking-wide text-white/50 uppercase">
@@ -412,14 +567,37 @@ function ContactPage() {
         </div>
       </section>
 
+      {/* FAQ: heading on the left, card-style accordion on the right */}
       <section className="section-y bg-surface">
-        <div className="container-rd max-w-3xl">
-          <h2 className="text-3xl text-navy md:text-4xl">Questions fréquentes</h2>
-          <span className="swoosh mt-5" />
-          <Accordion type="single" collapsible className="mt-8">
+        <div className="container-rd grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+          <Reveal className="lg:sticky lg:top-28 lg:self-start">
+            <h2 className="text-3xl text-navy md:text-4xl">Questions fréquentes</h2>
+            <span className="swoosh mt-5" />
+            <p className="mt-6 max-w-sm text-base leading-relaxed text-slate-ink">
+              Une question qui n'est pas listée ? Écrivez-nous directement, nous vous répondons avec
+              plaisir.
+            </p>
+            <a
+              href={whatsappLink()}
+              target="_blank"
+              rel="noreferrer"
+              className="focus-rd mt-6 inline-flex items-center gap-2 rounded-lg border border-navy/20 px-5 py-3 text-sm font-bold text-navy transition-colors duration-300 hover:border-rouge/40 hover:text-rouge"
+            >
+              <MessageCircle className="size-4" />
+              Poser une question
+            </a>
+          </Reveal>
+
+          <Accordion type="single" collapsible>
             {faqItems.map((item, i) => (
-              <AccordionItem key={item.q} value={`item-${i}`}>
-                <AccordionTrigger className="text-navy">{item.q}</AccordionTrigger>
+              <AccordionItem
+                key={item.q}
+                value={`item-${i}`}
+                className="mb-3 rounded-xl border border-border bg-background px-5 transition-all duration-300 data-[state=open]:border-rouge/40 data-[state=open]:shadow-soft"
+              >
+                <AccordionTrigger className="text-left text-navy hover:no-underline">
+                  {item.q}
+                </AccordionTrigger>
                 <AccordionContent className="leading-relaxed text-slate-ink">
                   {item.a}
                 </AccordionContent>
@@ -489,12 +667,20 @@ function SuccessState({ items }: { items: string[] }) {
         </div>
       )}
 
-      <Link
-        to="/catalogue"
-        className="focus-rd mt-8 inline-flex items-center justify-center rounded-lg bg-navy px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift"
-      >
-        Retour au catalogue
-      </Link>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <Link
+          to="/catalogue"
+          className="focus-rd inline-flex items-center justify-center rounded-lg bg-navy px-6 py-3.5 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lift"
+        >
+          Retour au catalogue
+        </Link>
+        <Link
+          to="/blog"
+          className="focus-rd inline-flex items-center justify-center rounded-lg border border-navy/20 px-6 py-3.5 text-sm font-bold text-navy transition-colors duration-300 hover:border-rouge/40 hover:text-rouge"
+        >
+          Lire nos guides
+        </Link>
+      </div>
     </motion.div>
   );
 }

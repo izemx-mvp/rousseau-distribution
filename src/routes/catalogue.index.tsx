@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { LayoutGrid, List, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
+import { Check, LayoutGrid, List, Loader2, Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Illustration } from "@/components/illustrations/Tech";
 import { PageHero } from "@/components/layout/PageHero";
 import { ProductCard } from "@/components/catalogue/ProductCard";
 import {
@@ -12,22 +11,26 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { FAMILIES, countByFamily, products, type Product, type ProductFamily } from "@/data/products";
+import { FAMILIES, countByFamily, products, type ProductFamily } from "@/data/products";
+import { getFamilyImage } from "@/lib/product-image";
 import { cn } from "@/lib/utils";
+import catalogueEmpty from "@/assets/catalogue-empty.png";
 
 type View = "grid" | "list";
 type Sort = "pertinence" | "reference" | "marque";
 
 interface CatalogueSearch {
-  q?: string;
-  famille?: ProductFamily;
-  marque?: string;
-  vue?: View;
-  tri?: Sort;
+  q?: string | undefined;
+  famille?: ProductFamily | undefined;
+  marque?: string | undefined;
+  sous?: string | undefined;
+  vue?: View | undefined;
+  tri?: Sort | undefined;
 }
 
 const FAMILY_IDS = FAMILIES.map((f) => f.id);
 const PAGE_SIZE = 24;
+const QUICK_SEARCHES = ["6205-2RS", "SPB", "Moteur", "Chaîne"];
 
 function normalize(value: string): string {
   return value
@@ -41,6 +44,7 @@ export const Route = createFileRoute("/catalogue/")({
     const rawQ = search["q"];
     const rawFamille = search["famille"];
     const rawMarque = search["marque"];
+    const rawSous = search["sous"];
     const rawVue = search["vue"];
     const rawTri = search["tri"];
     const q = typeof rawQ === "string" && rawQ.trim() ? rawQ : undefined;
@@ -49,6 +53,7 @@ export const Route = createFileRoute("/catalogue/")({
         ? (rawFamille as ProductFamily)
         : undefined;
     const marque = typeof rawMarque === "string" && rawMarque.trim() ? rawMarque : undefined;
+    const sous = typeof rawSous === "string" && rawSous.trim() ? rawSous : undefined;
     const vue = rawVue === "list" ? "list" : rawVue === "grid" ? "grid" : undefined;
     const tri =
       rawTri === "reference" || rawTri === "marque" || rawTri === "pertinence"
@@ -58,6 +63,7 @@ export const Route = createFileRoute("/catalogue/")({
     if (q !== undefined) result.q = q;
     if (famille !== undefined) result.famille = famille;
     if (marque !== undefined) result.marque = marque;
+    if (sous !== undefined) result.sous = sous;
     if (vue !== undefined) result.vue = vue;
     if (tri !== undefined) result.tri = tri;
     return result;
@@ -91,8 +97,8 @@ function CataloguePage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const settleRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const settleRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const counts = useMemo(() => countByFamily(), []);
 
@@ -129,7 +135,7 @@ function CataloguePage() {
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [search.q, search.famille, search.marque, search.tri]);
+  }, [search.q, search.famille, search.marque, search.sous, search.tri]);
 
   const brands = useMemo(() => {
     const base = search.famille ? products.filter((p) => p.family === search.famille) : products;
@@ -138,7 +144,9 @@ function CataloguePage() {
 
   const subcategories = useMemo(() => {
     const base = search.famille ? products.filter((p) => p.family === search.famille) : products;
-    return Array.from(new Set(base.map((p) => p.subcategory))).sort((a, b) => a.localeCompare(b, "fr"));
+    return Array.from(new Set(base.map((p) => p.subcategory))).sort((a, b) =>
+      a.localeCompare(b, "fr"),
+    );
   }, [search.famille]);
 
   const filtered = useMemo(() => {
@@ -146,6 +154,7 @@ function CataloguePage() {
     let list = products.filter((p) => {
       if (search.famille && p.family !== search.famille) return false;
       if (search.marque && normalize(p.brand) !== normalize(search.marque)) return false;
+      if (search.sous && p.subcategory !== search.sous) return false;
       if (!q) return true;
       return (
         normalize(p.reference).includes(q) ||
@@ -162,7 +171,7 @@ function CataloguePage() {
       list = [...list].sort((a, b) => a.brand.localeCompare(b.brand, "fr"));
     }
     return list;
-  }, [search.q, search.famille, search.marque, search.tri]);
+  }, [search.q, search.famille, search.marque, search.sous, search.tri]);
 
   const visible = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -177,7 +186,38 @@ function CataloguePage() {
     navigate({ search: {}, replace: true });
   };
 
-  const hasActiveFilters = Boolean(search.q || search.famille || search.marque);
+  const hasActiveFilters = Boolean(search.q || search.famille || search.marque || search.sous);
+  const familyLabel = FAMILIES.find((f) => f.id === search.famille)?.label;
+
+  const activeChips: { key: string; label: string; onRemove: () => void }[] = [];
+  if (search.q) {
+    activeChips.push({
+      key: "q",
+      label: `« ${search.q} »`,
+      onRemove: () => setInputValue(""),
+    });
+  }
+  if (familyLabel) {
+    activeChips.push({
+      key: "famille",
+      label: familyLabel,
+      onRemove: () => setSearch({ famille: undefined, marque: undefined, sous: undefined }),
+    });
+  }
+  if (search.marque) {
+    activeChips.push({
+      key: "marque",
+      label: search.marque,
+      onRemove: () => setSearch({ marque: undefined }),
+    });
+  }
+  if (search.sous) {
+    activeChips.push({
+      key: "sous",
+      label: search.sous,
+      onRemove: () => setSearch({ sous: undefined }),
+    });
+  }
 
   return (
     <div className="bg-background">
@@ -207,6 +247,21 @@ function CataloguePage() {
               placeholder="Référence, désignation, marque, machine…"
               className="focus-rd h-16 w-full rounded-xl border border-white/15 bg-white/95 pr-5 pl-14 text-base font-medium text-navy shadow-lift placeholder:text-muted-foreground focus:border-rouge/60"
             />
+          </div>
+
+          {/* quick searches */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <span className="text-xs font-semibold text-white/55">Essayez :</span>
+            {QUICK_SEARCHES.map((term) => (
+              <button
+                key={term}
+                type="button"
+                onClick={() => setInputValue(term)}
+                className="focus-rd mono-ref rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-bold text-white/85 backdrop-blur-sm transition-colors duration-300 hover:border-rouge hover:bg-rouge hover:text-white"
+              >
+                {term}
+              </button>
+            ))}
           </div>
         </div>
       </PageHero>
@@ -295,14 +350,55 @@ function CataloguePage() {
               <ViewToggle view={view} onChange={(v) => setSearch({ vue: v })} />
             </div>
 
+            {/* active filter chips */}
+            <AnimatePresence initial={false}>
+              {activeChips.length > 0 && (
+                <motion.div
+                  key="chips"
+                  initial={reducedMotion ? false : { opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <ul className="flex flex-wrap items-center gap-2 pt-4">
+                    {activeChips.map((chip) => (
+                      <li key={chip.key}>
+                        <button
+                          type="button"
+                          onClick={chip.onRemove}
+                          aria-label={`Retirer le filtre ${chip.label}`}
+                          className="focus-rd group inline-flex items-center gap-1.5 rounded-full border border-rouge/30 bg-rouge/8 py-1.5 pr-2 pl-3.5 text-xs font-bold text-rouge transition-colors duration-300 hover:bg-rouge hover:text-white"
+                        >
+                          {chip.label}
+                          <X className="size-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                    <li>
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="focus-rd px-2 text-xs font-bold text-slate-ink underline-offset-2 hover:text-navy hover:underline"
+                      >
+                        Tout effacer
+                      </button>
+                    </li>
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {filtered.length === 0 ? (
               <EmptyState query={search.q ?? ""} />
             ) : (
               <>
                 <motion.div
                   layout={!reducedMotion}
+                  aria-busy={isSettling}
                   className={cn(
-                    "mt-6 grid gap-5",
+                    "mt-6 grid gap-5 transition-opacity duration-300",
+                    isSettling && "opacity-70",
                     view === "grid" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3" : "grid-cols-1",
                   )}
                 >
@@ -314,7 +410,10 @@ function CataloguePage() {
                         initial={reducedMotion ? false : { opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.35, delay: reducedMotion ? 0 : Math.min(i, 8) * 0.03 }}
+                        transition={{
+                          duration: 0.35,
+                          delay: reducedMotion ? 0 : Math.min(i, 8) * 0.03,
+                        }}
                       >
                         <ProductCard product={product} view={view} />
                       </motion.div>
@@ -322,15 +421,26 @@ function CataloguePage() {
                   </AnimatePresence>
                 </motion.div>
 
-                {hasMore && (
-                  <div className="mt-10 flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                      className="focus-rd rounded-lg border border-navy/15 bg-background px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-rouge/40 hover:text-rouge"
-                    >
-                      Charger plus ({filtered.length - visible.length} restantes)
-                    </button>
+                {filtered.length > PAGE_SIZE && (
+                  <div className="mt-10 flex flex-col items-center gap-3">
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Affichage de {visible.length} sur {filtered.length}
+                    </p>
+                    <div className="h-1 w-48 overflow-hidden rounded-full bg-border">
+                      <div
+                        className="h-full rounded-full bg-rouge transition-all duration-500"
+                        style={{ width: `${(visible.length / filtered.length) * 100}%` }}
+                      />
+                    </div>
+                    {hasMore && (
+                      <button
+                        type="button"
+                        onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                        className="focus-rd mt-2 rounded-lg border border-navy/15 bg-background px-6 py-3 text-sm font-bold text-navy transition-colors hover:border-rouge/40 hover:text-rouge"
+                      >
+                        Charger plus ({filtered.length - visible.length} restantes)
+                      </button>
+                    )}
                   </div>
                 )}
               </>
@@ -423,31 +533,61 @@ function FilterPanel({
         )}
       </div>
 
+      {/* Family: image tiles */}
       <fieldset>
         <legend className="mb-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">
           Famille
         </legend>
-        <div className="space-y-1">
-          {FAMILIES.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => onChange({ famille: search.famille === f.id ? undefined : f.id })}
-              aria-pressed={search.famille === f.id}
-              className={cn(
-                "focus-rd flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition-colors",
-                search.famille === f.id ? "bg-rouge/10 text-rouge" : "text-slate-ink hover:bg-surface",
-              )}
-            >
-              <span>{f.label}</span>
-              <span className="text-xs text-muted-foreground">{counts[f.id]}</span>
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-2">
+          {FAMILIES.map((f) => {
+            const active = search.famille === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() =>
+                  onChange({
+                    famille: active ? undefined : f.id,
+                    marque: undefined,
+                    sous: undefined,
+                  })
+                }
+                aria-pressed={active}
+                className={cn(
+                  "group focus-rd relative aspect-[4/3] overflow-hidden rounded-lg border-2 text-left transition-colors duration-300",
+                  active ? "border-rouge" : "border-transparent hover:border-navy/25",
+                )}
+              >
+                <img
+                  src={getFamilyImage(f.id)}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <span className="absolute inset-0 bg-gradient-to-t from-navy-deep/90 via-navy-deep/30 to-transparent" />
+                <span className="absolute inset-x-0 bottom-0 p-2">
+                  <span className="block text-xs leading-tight font-bold text-white">
+                    {f.label}
+                  </span>
+                  <span className="text-[11px] text-white/70">{counts[f.id]} réf.</span>
+                </span>
+                {active && (
+                  <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-full bg-rouge text-white">
+                    <Check className="size-3" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </fieldset>
 
       <div>
-        <label htmlFor="filtre-marque" className="mb-3 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
+        <label
+          htmlFor="filtre-marque"
+          className="mb-3 block text-xs font-bold tracking-wide text-muted-foreground uppercase"
+        >
           Marque
         </label>
         <select
@@ -469,12 +609,26 @@ function FilterPanel({
         <p className="mb-3 text-xs font-bold tracking-wide text-muted-foreground uppercase">
           Sous-catégories
         </p>
-        <ul className="space-y-1 text-sm text-slate-ink">
-          {subcategories.slice(0, 8).map((s) => (
-            <li key={s} className="truncate rounded-lg px-3 py-1.5 hover:bg-surface">
-              {s}
-            </li>
-          ))}
+        <ul className="max-h-60 space-y-1 overflow-y-auto pr-1 text-sm">
+          {subcategories.map((s) => {
+            const active = search.sous === s;
+            return (
+              <li key={s}>
+                <button
+                  type="button"
+                  onClick={() => onChange({ sous: active ? undefined : s })}
+                  aria-pressed={active}
+                  className={cn(
+                    "focus-rd flex w-full items-center justify-between gap-2 truncate rounded-lg px-3 py-1.5 text-left font-semibold transition-colors",
+                    active ? "bg-rouge/10 text-rouge" : "text-slate-ink hover:bg-surface",
+                  )}
+                >
+                  <span className="truncate">{s}</span>
+                  {active && <Check className="size-3.5 shrink-0" />}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
@@ -483,11 +637,15 @@ function FilterPanel({
 
 function EmptyState({ query }: { query: string }) {
   return (
-    <div className="mt-6 flex flex-col items-center rounded-xl border border-dashed border-border bg-surface/60 px-6 py-16 text-center">
-      <div className="size-20 text-navy/25">
-        <Illustration name="blueprint" />
-      </div>
-      <h3 className="mt-6 text-xl font-bold text-navy">Aucune référence trouvée</h3>
+    <div className="mt-6 flex flex-col items-center rounded-xl border border-dashed border-border bg-surface/60 px-6 py-14 text-center">
+      <img
+        src={catalogueEmpty}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="size-40 rounded-2xl object-cover shadow-lift"
+      />
+      <h3 className="mt-7 text-xl font-bold text-navy">Aucune référence trouvée</h3>
       <p className="mt-2 max-w-md text-sm text-slate-ink">
         Essayez un autre terme de recherche, ou demandez-nous directement cette pièce : nous
         l'identifions et revenons vers vous rapidement.
